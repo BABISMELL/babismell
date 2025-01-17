@@ -1,47 +1,52 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../lib/prisma';
+import { AuthRequest } from '../@types/express';
+import { UserRole } from '@prisma/client';
 
-interface AuthRequest extends Request {
-  user?: any;
+interface JwtPayload {
+  id: string;
+  email: string;
+  role: UserRole;
 }
 
-export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret');
-    if (typeof decoded === 'string') {
-      throw new Error('Invalid token');
-    }
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key'
+    ) as JwtPayload;
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id }
-    });
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    req.user = user;
-    next();
+    req.user = decoded;
+    return next();
   } catch (error) {
-    res.status(401).json({ error: 'Please authenticate' });
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
-// Middleware for admin access
-export const isAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const requireAdmin = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    if (!req.user || req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Admin access required' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
-    next();
+
+    if (req.user.role !== UserRole.ADMIN) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    return next();
   } catch (error) {
-    res.status(500).json({ error: 'Authentication error' });
+    console.error('Admin middleware error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };

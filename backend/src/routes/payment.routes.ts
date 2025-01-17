@@ -2,18 +2,14 @@ import { Router } from 'express';
 import { auth } from '../middleware/auth';
 import {
   createPayment,
-  updatePaymentStatus,
-  getPaymentById,
-  getUserPayments
+  getPayments,
+  getPayment
 } from '../controllers/payment.controller';
 
 const router = Router();
 
-// Protected payment routes
-router.use(auth);
-router.post('/', createPayment);
-router.get('/', getUserPayments);
-router.get('/:id', getPaymentById);
-router.put('/:id/status', updatePaymentStatus);
+router.post('/', auth, createPayment);
+router.get('/', auth, getPayments);
+router.get('/:id', auth, getPayment);
 
 export default router;

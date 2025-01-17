@@ -1,112 +1,75 @@
 import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { AuthRequest } from '../@types/express';
 
-export async function getAllPerfumes(req: Request, res: Response) {
+export const getPerfumes = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '10', category, search } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    const { categoryId, search } = req.query;
 
-    let whereClause: Prisma.PerfumeWhereInput = {};
-
-    if (category) {
-      whereClause.categoryId = category as string;
+    const where: any = {};
+    if (categoryId) {
+      where.categoryId = categoryId as string;
     }
-
     if (search) {
-      whereClause.OR = [
-        {
-          name: {
-            contains: search as string,
-            mode: 'insensitive'
-          }
-        },
-        {
-          description: {
-            contains: search as string,
-            mode: 'insensitive'
-          }
-        }
+      where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { description: { contains: search as string, mode: 'insensitive' } }
       ];
     }
 
-    const [perfumes, total] = await Promise.all([
-      prisma.perfume.findMany({
-        skip,
-        take: Number(limit),
-        where: whereClause,
-        include: {
-          category: true,
-          reviews: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              }
-            }
-          }
-        }
-      }),
-      prisma.perfume.count({ where: whereClause })
-    ]);
-
-    res.json({
-      perfumes,
-      total,
-      page: Number(page),
-      totalPages: Math.ceil(total / Number(limit))
-    });
-  } catch (error) {
-    console.error('Error in getAllPerfumes:', error);
-    res.status(500).json({ error: 'Error fetching perfumes' });
-  }
-}
-
-export async function getPerfumeById(req: Request, res: Response) {
-  try {
-    const perfume = await prisma.perfume.findUnique({
-      where: { id: req.params.id },
+    const perfumes = await prisma.perfume.findMany({
+      where,
       include: {
         category: true,
-        reviews: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true
-              }
-            }
-          }
-        }
+        reviews: true
+      }
+    });
+
+    return res.json(perfumes);
+  } catch (error) {
+    console.error('Get perfumes error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getPerfume = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const perfume = await prisma.perfume.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        reviews: true
       }
     });
 
     if (!perfume) {
-      return res.status(404).json({ error: 'Perfume not found' });
+      return res.status(404).json({ message: 'Perfume not found' });
     }
-    
-    res.json(perfume);
-  } catch (error) {
-    console.error('Error in getPerfumeById:', error);
-    res.status(500).json({ error: 'Error fetching perfume' });
-  }
-}
 
-export async function createPerfume(req: Request, res: Response) {
+    return res.json(perfume);
+  } catch (error) {
+    console.error('Get perfume error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const createPerfume = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, price, stock, categoryId, imageUrl } = req.body;
+    if (!req.user || req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Unauthorized: Admin access required' });
+    }
+
+    const { name, description, price, categoryId, stock, imageUrl } = req.body;
 
     const perfume = await prisma.perfume.create({
       data: {
         name,
         description,
-        price: new Prisma.Decimal(price),
-        stock: Number(stock),
+        price: parseFloat(price),
         categoryId,
+        stock: parseInt(stock),
         imageUrl
       },
       include: {
@@ -114,25 +77,30 @@ export async function createPerfume(req: Request, res: Response) {
       }
     });
 
-    res.status(201).json(perfume);
+    return res.status(201).json(perfume);
   } catch (error) {
-    console.error('Error in createPerfume:', error);
-    res.status(500).json({ error: 'Error creating perfume' });
+    console.error('Create perfume error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
-}
+};
 
-export async function updatePerfume(req: Request, res: Response) {
+export const updatePerfume = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, price, stock, categoryId, imageUrl } = req.body;
+    if (!req.user || req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Unauthorized: Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { name, description, price, categoryId, stock, imageUrl } = req.body;
 
     const perfume = await prisma.perfume.update({
-      where: { id: req.params.id },
+      where: { id },
       data: {
         name,
         description,
-        price: price ? new Prisma.Decimal(price) : undefined,
-        stock: stock ? Number(stock) : undefined,
+        price: price ? parseFloat(price) : undefined,
         categoryId,
+        stock: stock ? parseInt(stock) : undefined,
         imageUrl
       },
       include: {
@@ -140,22 +108,28 @@ export async function updatePerfume(req: Request, res: Response) {
       }
     });
 
-    res.json(perfume);
+    return res.json(perfume);
   } catch (error) {
-    console.error('Error in updatePerfume:', error);
-    res.status(500).json({ error: 'Error updating perfume' });
+    console.error('Update perfume error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
-}
+};
 
-export async function deletePerfume(req: Request, res: Response) {
+export const deletePerfume = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user || req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Unauthorized: Admin access required' });
+    }
+
+    const { id } = req.params;
+
     await prisma.perfume.delete({
-      where: { id: req.params.id }
+      where: { id }
     });
 
-    res.status(204).send();
+    return res.status(204).send();
   } catch (error) {
-    console.error('Error in deletePerfume:', error);
-    res.status(500).json({ error: 'Error deleting perfume' });
+    console.error('Delete perfume error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
-}
+};

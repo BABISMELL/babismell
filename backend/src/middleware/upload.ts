@@ -1,29 +1,30 @@
+import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { Request } from 'express';
 
 const storage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+  destination: (_req, _file, cb) => {
     cb(null, 'uploads/');
   },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
   }
 });
 
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Accept images only
-  if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)$/)) {
-    return cb(new Error('Only image files are allowed!'));
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG and GIF are allowed.'));
   }
-  cb(null, true);
 };
 
 export const upload = multer({
-  storage: storage,
+  storage,
+  fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: fileFilter
+    fileSize: 5 * 1024 * 1024 // 5MB
+  }
 });

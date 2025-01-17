@@ -1,44 +1,60 @@
 import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { OrderStatus } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { AuthRequest } from '../@types/express';
 
-interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-  };
-}
-
-interface OrderItem {
+interface OrderItemInput {
   perfumeId: string;
   quantity: number;
 }
 
 export async function createOrder(req: AuthRequest, res: Response) {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { items, shippingAddressId } = req.body;
+    const { items, shippingAddress } = req.body;
 
-    // Validate items
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'Order must contain at least one item' });
+    // Calculate total and prepare order items
+    let total = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+      const perfume = await prisma.perfume.findUnique({
+        where: { id: item.perfumeId }
+      });
+
+      if (!perfume) {
+        return res.status(404).json({ message: `Perfume with id ${item.perfumeId} not found` });
+      }
+
+      if (perfume.stock < item.quantity) {
+        return res.status(400).json({ message: `Not enough stock for perfume ${perfume.name}` });
+      }
+
+      total += perfume.price * item.quantity;
+      orderItems.push({
+        quantity: item.quantity,
+        price: perfume.price,
+        perfume: { connect: { id: perfume.id } }
+      });
+
+      // Update stock
+      await prisma.perfume.update({
+        where: { id: perfume.id },
+        data: { stock: perfume.stock - item.quantity }
+      });
     }
 
-    // Create the order with its items
     const order = await prisma.order.create({
       data: {
         userId: req.user.id,
-        status: OrderStatus.PENDING,
-        shippingAddressId,
+        total,
         items: {
-          create: items.map((item: OrderItem) => ({
-            quantity: item.quantity,
-            perfume: { connect: { id: item.perfumeId } }
-          }))
+          create: orderItems
+        },
+        shippingAddress: {
+          create: shippingAddress
         }
       },
       include: {
@@ -51,22 +67,21 @@ export async function createOrder(req: AuthRequest, res: Response) {
       }
     });
 
-    res.status(201).json(order);
+    return res.status(201).json(order);
   } catch (error) {
-    console.error('Error in createOrder:', error);
-    res.status(500).json({ error: 'Error creating order' });
+    console.error('Create order error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-export async function getOrderById(req: AuthRequest, res: Response) {
+export async function getOrders(req: AuthRequest, res: Response) {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const order = await prisma.order.findUnique({
+    const orders = await prisma.order.findMany({
       where: {
-        id: req.params.id,
         userId: req.user.id
       },
       include: {
@@ -75,19 +90,48 @@ export async function getOrderById(req: AuthRequest, res: Response) {
             perfume: true
           }
         },
-        shippingAddress: true,
-        payment: true
+        shippingAddress: true
+      }
+    });
+
+    return res.json(orders);
+  } catch (error) {
+    console.error('Get orders error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+export async function getOrder(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { id } = req.params;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        userId: req.user.id
+      },
+      include: {
+        items: {
+          include: {
+            perfume: true
+          }
+        },
+        shippingAddress: true
       }
     });
 
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
-    res.json(order);
+    return res.json(order);
   } catch (error) {
-    console.error('Error in getOrderById:', error);
-    res.status(500).json({ error: 'Error fetching order' });
+    console.error('Get order error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }
 

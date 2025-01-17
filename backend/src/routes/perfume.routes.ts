@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { auth, isAdmin } from '../middleware/auth';
-import { 
-  getAllPerfumes,
-  getPerfumeById,
+import { auth, requireAdmin } from '../middleware/auth';
+import {
+  getPerfumes,
+  getPerfume,
   createPerfume,
   updatePerfume,
   deletePerfume
@@ -11,12 +11,12 @@ import {
 const router = Router();
 
 // Public routes
-router.get('/', getAllPerfumes);
-router.get('/:id', getPerfumeById);
+router.get('/', getPerfumes);
+router.get('/:id', getPerfume);
 
 // Admin routes
-router.post('/', auth, isAdmin, createPerfume);
-router.put('/:id', auth, isAdmin, updatePerfume);
-router.delete('/:id', auth, isAdmin, deletePerfume);
+router.post('/', auth, requireAdmin, createPerfume);
+router.put('/:id', auth, requireAdmin, updatePerfume);
+router.delete('/:id', auth, requireAdmin, deletePerfume);
 
 export default router;

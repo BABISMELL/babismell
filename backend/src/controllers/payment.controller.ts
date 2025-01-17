@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { PaymentStatus } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { AuthRequest } from '../@types/express';
 
 interface AuthRequest extends Request {
   user?: {
@@ -12,116 +12,93 @@ interface AuthRequest extends Request {
 
 export async function createPayment(req: AuthRequest, res: Response) {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { orderId, amount, paymentMethod } = req.body;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId: req.user.id
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
 
     const payment = await prisma.payment.create({
       data: {
         orderId,
         amount,
-        status: PaymentStatus.PENDING,
-        userId: req.user.id,
-        paymentMethod
+        paymentMethod,
+        status: 'pending'
       },
-      include: {
-        order: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
-    });
-
-    res.status(201).json(payment);
-  } catch (error) {
-    console.error('Error in createPayment:', error);
-    res.status(500).json({ error: 'Error creating payment' });
-  }
-}
-
-export async function updatePaymentStatus(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!Object.values(PaymentStatus).includes(status)) {
-      return res.status(400).json({ error: 'Invalid payment status' });
-    }
-
-    const payment = await prisma.payment.update({
-      where: { id },
-      data: { status },
-      include: {
-        order: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
-    });
-
-    res.json(payment);
-  } catch (error) {
-    console.error('Error in updatePaymentStatus:', error);
-    res.status(500).json({ error: 'Error updating payment status' });
-  }
-}
-
-export async function getPaymentById(req: Request, res: Response) {
-  try {
-    const payment = await prisma.payment.findUnique({
-      where: { id: req.params.id },
-      include: {
-        order: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
-    });
-
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment not found' });
-    }
-
-    res.json(payment);
-  } catch (error) {
-    console.error('Error in getPaymentById:', error);
-    res.status(500).json({ error: 'Error fetching payment' });
-  }
-}
-
-export async function getUserPayments(req: AuthRequest, res: Response) {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const payments = await prisma.payment.findMany({
-      where: { userId: req.user.id },
       include: {
         order: true
       }
     });
 
-    res.json(payments);
+    return res.status(201).json(payment);
   } catch (error) {
-    console.error('Error in getUserPayments:', error);
-    res.status(500).json({ error: 'Error fetching user payments' });
+    console.error('Create payment error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+export async function getPayments(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const payments = await prisma.payment.findMany({
+      where: {
+        order: {
+          userId: req.user.id
+        }
+      },
+      include: {
+        order: true
+      }
+    });
+
+    return res.json(payments);
+  } catch (error) {
+    console.error('Get payments error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+export async function getPayment(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { id } = req.params;
+
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id,
+        order: {
+          userId: req.user.id
+        }
+      },
+      include: {
+        order: true
+      }
+    });
+
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    return res.json(payment);
+  } catch (error) {
+    console.error('Get payment error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }
