@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../@types/express';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16'
+});
 
 interface AuthRequest extends Request {
   user?: {
@@ -102,3 +107,86 @@ export async function getPayment(req: AuthRequest, res: Response) {
     return res.status(500).json({ message: 'Internal server error' });
   }
 }
+
+export const createPaymentIntent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { orderId } = req.body;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId: req.user.id
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(order.total * 100), // Convert to cents
+      currency: 'eur',
+      metadata: {
+        orderId: order.id,
+        userId: req.user.id
+      }
+    });
+
+    return res.json({
+      clientSecret: paymentIntent.client_secret
+    });
+  } catch (error) {
+    console.error('Create payment intent error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const handleWebhook = async (req: AuthRequest, res: Response) => {
+  try {
+    const sig = req.headers['stripe-signature'];
+
+    if (!sig) {
+      return res.status(400).json({ message: 'No signature header' });
+    }
+
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET || ''
+    );
+
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const orderId = paymentIntent.metadata.orderId;
+
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { status: 'paid' }
+        });
+
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const orderId = paymentIntent.metadata.orderId;
+
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { status: 'failed' }
+        });
+
+        break;
+      }
+    }
+
+    return res.json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

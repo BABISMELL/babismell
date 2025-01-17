@@ -7,7 +7,7 @@ interface OrderItemInput {
   quantity: number;
 }
 
-export async function createOrder(req: AuthRequest, res: Response) {
+export const createOrder = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -50,6 +50,7 @@ export async function createOrder(req: AuthRequest, res: Response) {
       data: {
         userId: req.user.id,
         total,
+        status: 'pending',
         items: {
           create: orderItems
         },
@@ -72,9 +73,9 @@ export async function createOrder(req: AuthRequest, res: Response) {
     console.error('Create order error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-}
+};
 
-export async function getOrders(req: AuthRequest, res: Response) {
+export const getOrders = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -99,9 +100,9 @@ export async function getOrders(req: AuthRequest, res: Response) {
     console.error('Get orders error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-}
+};
 
-export async function getOrder(req: AuthRequest, res: Response) {
+export const getOrder = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -133,7 +134,7 @@ export async function getOrder(req: AuthRequest, res: Response) {
     console.error('Get order error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-}
+};
 
 export async function getUserOrders(req: AuthRequest, res: Response) {
   try {
