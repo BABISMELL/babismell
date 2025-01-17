@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 267 100% 61%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 267 70% 94%;
+    --secondary-foreground: 267 100% 61%;
+    --muted: 267 70% 94%;
+    --muted-foreground: 267 30% 40%;
+    --accent: 267 100% 61%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 267 70% 94%;
+    --input: 267 70% 94%;
+    --ring: 267 100% 61%;
+    --radius: 0.75rem;
+  }
+ 
+  .dark {
+    --background: 267 50% 4%;
+    --foreground: 0 0% 98%;
+    --card: 267 50% 4%;
+    --card-foreground: 0 0% 98%;
+    --popover: 267 50% 4%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 267 100% 61%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 267 30% 15%;
+    --secondary-foreground: 267 100% 61%;
+    --muted: 267 30% 15%;
+    --muted-foreground: 267 30% 70%;
+    --accent: 267 100% 61%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 267 30% 15%;
+    --input: 267 30% 15%;
+    --ring: 267 100% 61%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Layout utilities */
+.container-custom {
+  @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+}
+
+.section-padding {
+  @apply py-12 md:py-16 lg:py-24;
+}
+
+.grid-layout {
+  @apply grid gap-6 sm:gap-8;
+}
+
+.card-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+}
+
+/* Components */
+.gradient-primary {
+  @apply bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600;
+}
+
+.gradient-hover {
+  @apply hover:bg-gradient-to-r hover:from-purple-600 hover:via-purple-500 hover:to-purple-600;
+}
+
+/* Animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
+/* Gradient text animation */
+.animated-gradient-text {
+  background: linear-gradient(
+    to right,
+    theme(colors.purple.600),
+    theme(colors.purple.400),
+    theme(colors.purple.600)
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: gradient 3s linear infinite;
+}
+
+@keyframes gradient {
+  to {
+    background-position: 200% center;
+  }
+}
