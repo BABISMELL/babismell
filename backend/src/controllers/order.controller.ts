@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../@types/express';
-import { OrderStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 interface OrderItemInput {
   perfumeId: string;
@@ -51,7 +51,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       data: {
         userId: req.user.id,
         total,
-        status: OrderStatus.PENDING,
+        status: Prisma.OrderStatus.PENDING,
         items: {
           create: orderItems
         },
@@ -176,7 +176,7 @@ export async function updateOrderStatus(req: AuthRequest, res: Response) {
 
     const { status } = req.body;
 
-    if (!Object.values(OrderStatus).includes(status)) {
+    if (!Object.values(Prisma.OrderStatus).includes(status)) {
       return res.status(400).json({ error: 'Invalid order status' });
     }
 
