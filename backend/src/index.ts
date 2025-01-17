@@ -1,10 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
 import { errorMiddleware } from './middleware/error';
 import routes from './routes';
-import prisma from './lib/prisma';
 
 const app = express();
 const server = createServer(app);

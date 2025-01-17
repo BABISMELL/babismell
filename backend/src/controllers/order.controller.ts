@@ -50,7 +50,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       data: {
         userId: req.user.id,
         total,
-        status: 'pending',
+        status: 'PENDING',
         items: {
           create: orderItems
         },

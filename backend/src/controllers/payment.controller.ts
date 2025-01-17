@@ -166,7 +166,7 @@ export const handleWebhook = async (req: AuthRequest, res: Response) => {
 
         await prisma.order.update({
           where: { id: orderId },
-          data: { status: 'paid' }
+          data: { status: 'PAID' }
         });
 
         break;
@@ -177,7 +177,7 @@ export const handleWebhook = async (req: AuthRequest, res: Response) => {
 
         await prisma.order.update({
           where: { id: orderId },
-          data: { status: 'failed' }
+          data: { status: 'FAILED' }
         });
 
         break;
