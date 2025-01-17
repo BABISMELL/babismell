@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { UserRole } from '@prisma/client';
 
 declare global {
   namespace Express {
@@ -6,7 +7,7 @@ declare global {
       user?: {
         id: string;
         email: string;
-        role: 'ADMIN' | 'CLIENT';
+        role: UserRole;
       };
     }
   }
@@ -16,6 +17,6 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
-    role: 'ADMIN' | 'CLIENT';
+    role: UserRole;
   };
 }

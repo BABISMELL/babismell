@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../@types/express';
 import Stripe from 'stripe';
+import { OrderStatus } from '@prisma/client';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16'
+  apiVersion: '2024-12-18.acacia'
 });
 
 interface AuthRequest extends Request {
@@ -166,7 +167,7 @@ export const handleWebhook = async (req: AuthRequest, res: Response) => {
 
         await prisma.order.update({
           where: { id: orderId },
-          data: { status: 'PAID' }
+          data: { status: OrderStatus.PAID }
         });
 
         break;
@@ -177,7 +178,7 @@ export const handleWebhook = async (req: AuthRequest, res: Response) => {
 
         await prisma.order.update({
           where: { id: orderId },
-          data: { status: 'FAILED' }
+          data: { status: OrderStatus.FAILED }
         });
 
         break;

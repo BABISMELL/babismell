@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../@types/express';
+import { OrderStatus } from '@prisma/client';
 
 interface OrderItemInput {
   perfumeId: string;
@@ -50,7 +51,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       data: {
         userId: req.user.id,
         total,
-        status: 'PENDING',
+        status: OrderStatus.PENDING,
         items: {
           create: orderItems
         },
